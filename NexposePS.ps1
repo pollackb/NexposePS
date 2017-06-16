@@ -122,6 +122,16 @@ if($xmldata.AssetGroupConfigResponse.success -eq '0'){
 }
 
 Function Get-AssetGroupListing{
+<#
+    .SYNOPSIS
+        Retrieves a list of all asset groups.
+    .DESCRIPTION
+        Retrieves a list of all asset groups.
+    
+    .EXAMPLE
+        
+        Get-AssetGroupListing
+#>
 Confirm-Session
 # Get list of asset groups
 $sites_request = "<AssetGroupListingRequest session-id='$SCRIPT:session_id'/>"
@@ -168,7 +178,7 @@ Foreach($ID in $AssetGroupID){
 Function Get-SiteListing{
 <#
     .SYNOPSIS
-        Gets a list of sites.
+        retrieves a list of sites.
     .DESCRIPTION
         Gets a list of sites including id, name, description, riskfactor and riskscore.
     

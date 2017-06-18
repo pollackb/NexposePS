@@ -1,57 +1,33 @@
 # NexposePS
 This is a first go at using PowerShell to interact with the Nexpose API. There will be more to come.
 
-Login to your nexpose instance.
+Session Handling:
 
-#### `Invoke-NexposeLogin -server nexpose.server`
+#### `Invoke-NexposeLogin -server nexpose.server - Logs in to Nexpose.`
+#### `Invoke-NexposeLogout - Logs out.`
 
-End the session with your Nexpose server.
+Site Functions:
 
-#### `Invoke-NexposeLogout`
+#### `Get-SiteListing - Retrieves a complete list of sites.`
+#### `Get-SiteConfig 123 - Retrieves site information by site ID.`
 
-Retrieves a list of all asset groups.
+Asset Group Functions:
 
-#### `Get-AssetGroupListing`
+#### `Get-AssetGroupListing - Retrieves all asset groups.` 
+#### `Get-AssetGroupConfig 123 - Retrieves asset group information by ID.`
+#### `Get-AssetGroupByName assetgroupname - Retrieves asset group by name. Accepts wildcards.` 
 
-Retrieves asset group summaries out of Nexpose by asset group ID.
+Scan Functions:
+#### `Get-ScanActivity - Retrieves list of Active scans.`
+#### `Get-ScanStatus 123 - Retrieves data on a specific scan currently running. Requires scan ID.`
+#### `Get-ScanStatistics 123 - Returns scan information given a scan ID.`
 
-#### `Get-AssetGroupConfig 123`
+Engine Functions:
 
-Find asset groups by name. Accepts wildcards.
+#### `Get-SystemInformation - Returns a list of Nexpose engines`
+#### `Get-SystemInformation - Returns System information. Need to be a global admin.`
 
-#### `Get-AssetGroupByName assetgroupname`
+Vulnerability Functions:
 
-Retrieves a complete list of sites.
-
-#### `Get-SiteListing`
-
-Returns site information by site ID.
-
-#### `Get-SiteConfig 123`
-
-Returns list of Active scans.
-
-#### `Get-ScanActivity`
-
-Gets data on a specific scan currently running. requires scan ID.
-
-#### `Get-ScanStatus 123`
-
-Returns scan information given a scan ID.
-
-#### `Get-ScanStatistics`
-
-Returns a list of Nexpose engines
-
-
-Returns System information. Need to be a global admin.
-
-#### `Get-SystemInformation`
-
-Returns list of all vulnerabilities nexpose has checks for.
-
-#### `Get-VulnerabilityListing`
-
-Returns vulnerability information for a Vulnerability ID.
-
-#### `Get-VulnerabilityDetails 123`
+#### `Get-VulnerabilityListing - Returns list of all vulnerabilities nexpose has checks for.`
+#### `Get-VulnerabilityDetails 123 - Returns vulnerability information by Vulnerability ID.`

@@ -431,7 +431,6 @@ Function Get-VulnerabilityDetails{
 #>
 Param([String]$VulnID)
 Confirm-Session
-# Gets vulnerability listing
 $sites_request = "<VulnerabilityDetailsRequest session-id='$SCRIPT:session_id' vuln-id='$VulnID'/>"
 $resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
 [xml]$xmldata = $resp.content

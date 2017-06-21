@@ -576,7 +576,7 @@ if($xmldata.ReportConfigResponse.success -like '0'){
     }
 }
 
-Function Get-ReportHistory{
+Function Get-NexposeReportHistory{
 <#
     .SYNOPSIS
         Returns the run history of a report. 
@@ -588,7 +588,7 @@ Function Get-ReportHistory{
     
     
     .EXAMPLE
-        Get-ReportHistory 3916
+        Get-NexposeReportHistory 3916
 
 #>
 Param([Parameter(Mandatory=$True)][String]$ReportID)

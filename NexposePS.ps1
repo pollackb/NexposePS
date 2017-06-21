@@ -457,6 +457,272 @@ if($xmldata.VulnerabilityDetailsResponse.success -like '0'){
 
 ##############################
 #
-# Report Functions to be added
+# Report Functions
 #
 ##############################
+
+Function Get-NexposeReportTemplateListing{
+<#
+    .SYNOPSIS
+        Returns list of all Report Templates. 
+    .DESCRIPTION
+        Returns list of all Report Templates. 
+   
+    .EXAMPLE
+        Get-ReportTemplateListing
+
+#>
+Confirm-Session
+# Gets vulnerability listing
+$sites_request = "<ReportTemplateListingRequest session-id='$SCRIPT:session_id'/>"
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportTemplateListingResponse.success -like '0'){
+    Write-host 'ERROR: '$xmldata.ReportTemplateListingResponse.Failure.message -ForegroundColor Red
+    }
+    Else{
+    $xmldata.ReportTemplateListingResponse.ReportTemplateSummary
+    }
+}
+
+Function Get-NexposeReportListing{
+<#
+    .SYNOPSIS
+        Returns list of all reports or a report can be specified by name, ID, status and time generated.
+    .DESCRIPTION
+       Returns list of all reports or a report can be specified by name, ID, status and time generated. This module allows the use of wildcards to return multiple matches.
+
+    .PARAMETER Name
+        Can be used to search for a report by report name. used like this '*reportname*'
+
+    .PARAMETER TemplateID
+        Can be used to search for a report by the TemplateID used. used like this 'TemplateID'
+
+    .PARAMETER Status
+        Can be used to search for a report by the status of the report. Only accepts these values: Started, Generated, Failed, Aborted, Unknown, *
+    
+    
+    .EXAMPLE
+        Get-NexposeReportListing -Name reportnam*
+#>
+Param(
+    [String]
+    $Name = '*',
+    
+    [String]
+    $TemplateID = '*',
+
+    [ValidateSet("Started", "Generated", "Failed", "Aborted", "Unknown", "*")]
+    [String]
+    $Status = '*',
+
+    [String]
+    $GeneratedOn = '*'
+    )
+Confirm-Session
+# Gets vulnerability listing
+$sites_request = "<ReportListingRequest session-id='$SCRIPT:session_id'/>"
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportListingResponse.success -like '0'){
+    Write-host 'ERROR: '$xmldata.ReportListingResponse.Failure.message -ForegroundColor Red
+    }
+    Else{
+       
+    $xmldata.ReportListingResponse.ReportConfigSummary | where { $_.name -like "$Name" -and $_.status -like "$Status" -and $_.'template-id' -like "$TemplateID" -and $_.'generated-on' -like "$GeneratedOn" } 
+    
+    }
+}
+
+Function Get-NexposeReportConfig{
+<#
+    .SYNOPSIS
+        Returns the configuration of a report.
+    .DESCRIPTION
+        Returns the configuration of a report.  
+
+    .PARAMETER cfgID
+        Specify the config-id of the report
+    
+    
+    .EXAMPLE
+        Get-NexposeReportConfig
+
+
+#>
+Param([Parameter(Mandatory=$True)][String] $cfgID)
+Confirm-Session
+# Gets vulnerability listing
+$sites_request = "<ReportConfigRequest session-id='$SCRIPT:session_id'  reportcfg-id='$cfgID'/>"
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportConfigResponse.success -like '0'){
+    Write-host 'ERROR: '$xmldata.ReportConfigResponse.Failure.message -ForegroundColor Red
+    }
+    Else{
+    $val = New-Object psobject;
+    $val | Add-Member -MemberType NoteProperty -Name ReportID -Value $xmldata.ReportConfigResponse.ReportConfig.id
+    $val | Add-Member -MemberType NoteProperty -Name ReportName -Value $xmldata.ReportConfigResponse.ReportConfig.name
+    $val | Add-Member -MemberType NoteProperty -Name ReportTemplateID -Value $xmldata.ReportConfigResponse.ReportConfig.'template-id'
+    $val | Add-Member -MemberType NoteProperty -Name ReportFormat -Value $xmldata.ReportConfigResponse.ReportConfig.format
+    $val | Add-Member -MemberType NoteProperty -Name ReportOwner -Value $xmldata.ReportConfigResponse.ReportConfig.owner
+    $val | Add-Member -MemberType NoteProperty -Name ReportTimezone -Value $xmldata.ReportConfigResponse.ReportConfig.timezone
+    #Nedd a better way to handle the data within the filters, Generate and Delivery elements. For now the users will need to specify them if they need to see them.
+    $val | Add-Member -MemberType NoteProperty -Name ReportFilters -Value $xmldata.ReportConfigResponse.ReportConfig.filters.filter
+    $val | Add-Member -MemberType NoteProperty -Name ReportScheduleSet -Value $xmldata.ReportConfigResponse.ReportConfig.Generate
+    $val | Add-Member -MemberType NoteProperty -Name ReportUsers -Value $xmldata.ReportConfigResponse.ReportConfig.Users
+    $val | Add-Member -MemberType NoteProperty -Name ReportDelivery -Value $xmldata.ReportConfigResponse.ReportConfig.Delivery
+    $val    
+    }
+}
+
+Function Get-ReportHistory{
+<#
+    .SYNOPSIS
+        Returns the run history of a report. 
+    .DESCRIPTION
+        Returns the run history of a report.  
+
+    .PARAMETER ReportID
+        This should be any cfg-id. the cfg-id can be gotten while runing the Get-NexposeReportListing function.
+    
+    
+    .EXAMPLE
+        Get-ReportHistory 3916
+
+#>
+Param([Parameter(Mandatory=$True)][String]$ReportID)
+Confirm-Session
+# Gets vulnerability listing
+$sites_request = "<ReportHistoryRequest session-id='$SCRIPT:session_id' reportcfg-id='$ReportID' />"
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportHistoryResponse.success -like '0'){
+    Write-host 'ERROR: '$xmldata.ReportHistoryResponse.Failure.message -ForegroundColor Red
+    }
+    Else{
+    $xmldata.ReportHistoryResponse.ReportSummary
+    }
+}
+Function Get-NexposeReportSave{
+<#
+    .SYNOPSIS
+        Save the configuration for a report definition. 
+    .DESCRIPTION
+        Save the configuration for a report definition.
+
+    .PARAMETER ConfigID
+		Which report do you want to modify by ID. default is -1 which creates a new report.
+
+    .PARAMETER Name
+		Name for the report. This will rename reports that already have a name. 
+        
+    .PARAMETER TemplateID
+		What Report template do you want to use. Use Get-NexposeReportTemplateListingto find template IDs
+
+    .PARAMETER FileFormat
+		What format should the report be. Options: "pdf", "html", "rtf", "xml", "text", "csv", "db", "raw-xml", "raw-xml-v2", "ns-xml", "qualys-xml"
+
+    .PARAMETER Filters
+		List filters in a Type1:ID1,Type2:ID2 format. ID will be the ID of whateever type you want to filter by. 
+		Type Options:
+		site, group, device, scan, vuln-categories, vuln-severity, vuln-status, cyberscope-component, cyberscopebureau, cyberscope-enclave, tag
+
+    .PARAMETER GenerateNow
+		Generates the report after saving the report.
+    
+    .EXAMPLE
+      Get-NexposeReportSave -Name 'Test' -TemplateID 'audit-report' -FileFormat 'pdf' -Filters "site:268,site:255" -GenerateNow
+
+#>
+Param(
+    [String]
+    $ConfigID = -1,
+
+    [Parameter(Mandatory=$True)]
+    [String]
+    $Name,
+
+    [Parameter(Mandatory=$True)]
+    [String]
+    $TemplateID,
+
+    [Parameter(Mandatory=$True)]
+    [ValidateSet("pdf", "html", "rtf", "xml", "text", "csv", "db", "raw-xml", "raw-xml-v2", "ns-xml", "qualys-xml")]
+    [String]
+    $FileFormat,
+
+    [Parameter(Mandatory=$True)]
+    [String]
+    $Filters,
+    
+    [Switch]
+    $GenerateNow
+    )
+Confirm-Session
+$Generate = 0
+If($GenerateNow){
+ $Generate = 1
+}
+
+$ArrayFilters = $Filters.Split(',')
+
+Foreach($Filter in $ArrayFilters){
+$SeparatedFilters = $ArrayFilters.split(':')
+$type = $SeparatedFilters[0]
+$id = $SeparatedFilters[1]
+$FilterElements += "<filter type='$type' id='$id' />"
+}
+
+$sites_request = "<ReportSaveRequest session-id='$SCRIPT:session_id'  generate-now='$Generate'><ReportConfig id='$ConfigID' name='$Name' template-id='$TemplateID' format='$FileFormat'><Filters>$FilterElements</Filters><Users /><Generate /><Delivery><Storage storeOnServer='1' /></Delivery></ReportConfig></ReportSaveRequest> "
+Write-Host $sites_request
+
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportSaveResponse.success -like '0'){
+    $xmldata.ReportSaveResponse.Failure.Exception
+    }
+    Else{
+    $xmldata.ReportSaveResponse
+    }
+} 
+
+Function Get-NexposeReport{
+<#
+    .SYNOPSIS
+        Pulls generated report from Nexpose by name.
+    .DESCRIPTION
+        Pulls generated report from Nexpose by name.  
+
+    .PARAMETER Name
+        Name of report.
+		
+    .PARAMETER outfile
+		the name of the file and output location. Defaults to cuurent directory with the name "report".
+		
+    .EXAMPLE
+        Get-NexposeReport -Name 'test' -outfile './testreport.pdf'
+
+#>
+Param([String]$Name, [string] $outfile = './report')
+$report = Get-NexposeReportListing -Name $Name
+While($report.status -ne 'Generated'){
+    if ($report.status -eq 'Failed' -or $report.status -eq 'Aborted' -or $report.status -eq 'Unknown'){
+    Write-Host "Report Failed: $report.status" -ForegroundColor Red
+    break
+    
+    }
+    $report = Get-NexposeReportListing -Name $Name
+}
+
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$directory = $report.'report-URI'
+Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session -OutFile $outfile
+
+}

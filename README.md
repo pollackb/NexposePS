@@ -31,3 +31,13 @@ This is a first go at using PowerShell to interact with the Nexpose API. There w
 
 	Get-VulnerabilityListing	- Returns list of all vulnerabilities nexpose has checks for.
 	Get-VulnerabilityDetails 123	- Returns vulnerability information by Vulnerability ID.
+
+### Vulnerability Functions:	
+
+	Get-NexposeReportTemplateListing	- Returns list of all Report Templates.
+	Get-NexposeReportListing	- Returns list of all reports or a report can be specified by name, ID, status and time generated.
+	Get-NexposeReportConfig		- Returns the configuration of a report.
+	Get-NexposeReportHistory	- Returns the run history of a report.
+	Get-NexposeReportSave	- Save the configuration for a report definition.
+	Get-NexposeReport		- Pulls generated report from Nexpose by name.
+	

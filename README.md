@@ -8,19 +8,19 @@ This is a first go at using PowerShell to interact with the Nexpose API. There w
 ### Site Functions:
 
 	Get-SiteListing 	- Retrieves a complete list of sites.
-	Get-SiteConfig 123 	- Retrieves site information by site ID.
+	Get-SiteConfig 	- Retrieves site information by site ID.
 
 ### Asset Group Functions:
 
 	Get-AssetGroupListing	- Retrieves all asset groups.
-	Get-AssetGroupConfig 123	- Retrieves asset group information by ID.
+	Get-AssetGroupConfig	- Retrieves asset group information by ID.
 	Get-AssetGroupByName assetgroupname	- Retrieves asset group by name. Accepts wildcards.
 
 ### Scan Functions:
 
 	Get-ScanActivity 	- Retrieves list of Active scans.
-	Get-ScanStatus 123 	- Retrieves data on a specific scan currently running. Requires scan ID.
-	Get-ScanStatistics 123 	- Returns scan information given a scan ID.
+	Get-ScanStatus 	- Retrieves data on a specific scan currently running. Requires scan ID.
+	Get-ScanStatistics 	- Returns scan information given a scan ID.
 
 ### Engine Functions:
 
@@ -30,7 +30,7 @@ This is a first go at using PowerShell to interact with the Nexpose API. There w
 ### Vulnerability Functions:
 
 	Get-VulnerabilityListing	- Returns list of all vulnerabilities nexpose has checks for.
-	Get-VulnerabilityDetails 123	- Returns vulnerability information by Vulnerability ID.
+	Get-VulnerabilityDetails	- Returns vulnerability information by Vulnerability ID.
 
 ### Reporting Functions:	
 
@@ -40,4 +40,12 @@ This is a first go at using PowerShell to interact with the Nexpose API. There w
 	Get-NexposeReportHistory	- Returns the run history of a report.
 	Get-NexposeReportSave		- Save the configuration for a report definition.
 	Get-NexposeReport		- Pulls generated report from Nexpose by name.
+
+### Tag Functions:
+
+	Get-TagListing	- Pulls a list of all tags or specify a name.
+	Get-TagDetails	- Returns detailed info on tags
 	
+### Misc. scripts:
+
+	Get-NexposeOSInfo	- Returns a list of operating systems and the number of instances

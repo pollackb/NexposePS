@@ -705,6 +705,7 @@ Function Get-NexposeReport{
 
 #>
 Param([String]$Name, [string] $outfile = './report')
+Confirm-Session
 $report = Get-NexposeReportListing -Name $Name
 While($report.status -ne 'Generated'){
     if ($report.status -eq 'Failed' -or $report.status -eq 'Aborted' -or $report.status -eq 'Unknown'){
@@ -725,4 +726,133 @@ $session.Cookies.Add($cookie)
 $directory = $report.'report-URI'
 Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session -OutFile $outfile
 
+}
+
+####################################
+#
+# Tag Functions
+#
+# Tag functions use API version 2.0
+#
+####################################
+Function Get-TagListing{
+<#
+    .SYNOPSIS
+        Pull a list of all tags or specify a name.
+    .DESCRIPTION
+        Pull a list of all tags or specify a name.
+            
+    .PARAMETER Name
+        Name of the tag.
+    
+    .EXAMPLE
+      Get-TagListing -TagName 'tagname*'
+
+#>
+Param([String] $TagName = '*')
+Confirm-Session
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$directory = '/api/2.0/tags'
+$resp = Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session | ConvertFrom-Json
+# first request only pulls one page of tags. this code will make all tags fit on one page.
+$tagNumber = $resp.total_available
+$directory = "https://nexpose.upmc.com/api/2.0/tags?per_page=$tagNumber"
+$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
+$taglist += $resp.resources
+
+$taglist | where { $_.tag_name -like "$TagName" }
+
+}
+
+Function Get-TagDetails{
+<#
+    .SYNOPSIS
+        Returns detailed info on tags
+    .DESCRIPTION
+        Returns detailed info on tags
+            
+    .PARAMETER Name
+        Name of the tag.
+    
+    .EXAMPLE
+      Get-TagDetails -TagName 'tagname*'
+
+#>
+Param([String] $TagName = '*')
+Confirm-Session
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$directory = '/api/2.0/tags'
+$resp = Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session | ConvertFrom-Json
+# first request only pulls one page of tags. this code will make all tags fit on one page.
+$tagNumber = $resp.total_available
+$directory = "https://nexpose.upmc.com/api/2.0/tags?per_page=$tagNumber"
+$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
+$taglist += $resp.resources
+
+$TagID = ($taglist | where { $_.tag_name -like "$TagName" }).tag_id
+$directory = "https://nexpose.upmc.com/api/2.0/tags/$TagID"
+$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
+$resp
+
+}
+
+
+###########################
+#
+# Misc. scripts
+#
+############################
+
+# Pull generic OS Numbers
+Function Get-NexposeOSInfo{
+<#
+    .SYNOPSIS
+        Returns a list of operating systems and the number of instances
+    .DESCRIPTION
+        Returns a list of operating systems and the number of instances
+    
+    .EXAMPLE
+      Get-NexposeOSInfo
+
+#>
+Confirm-Session
+
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$headers = @{}
+$headers.Add("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+$headers.Add("X-Requested-With","XMLHttpRequest")
+$headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
+$headers.Add("Content-Type","application/x-www-form-urlencoded; charset=UTF-8")
+[xml]$resp = (Invoke-WebRequest https://nexpose.upmc.com/data/asset/os/dyntable?printDocType=0%26tableID=OSSynopsisTable -WebSession $session).content
+$OS = @();
+foreach($line in $resp.DynTable.Data.tr){$val = New-Object psobject;
+    $val | Add-Member -MemberType NoteProperty -Name OSID -Value $line.td[0]
+    $val | Add-Member -MemberType NoteProperty -Name OSName -Value $line.td[2]
+    $val | Add-Member -MemberType NoteProperty -Name Product -Value $line.td[3]
+    $val | Add-Member -MemberType NoteProperty -Name Vendor -Value $line.td[4]
+    $val | Add-Member -MemberType NoteProperty -Name Architecture -Value $line.td[5]
+    #convert instances to int instead of string so we can sort on it
+    $instance = [int]$line.td[6]
+    $val | Add-Member -MemberType NoteProperty -Name Instances -Value $instance
+    $OS += $val    
+    }
+$OS
 }

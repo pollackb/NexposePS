@@ -850,7 +850,7 @@ Function Get-AssetTags{
       Get-TagListing -TagName 'tagname*'
 
 #>
-Param([String] [parameter(ValueFromPipelineByPropertyName)] $AssetID)
+Param([String] [parameter(ValueFromPipeline=$true)] $AssetID)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
@@ -879,7 +879,7 @@ Function Get-TagListing{
       Get-TagListing -TagName 'tagname*'
 
 #>
-Param([String] [parameter(ValueFromPipelineByPropertyName)] $tag_name = '*')
+Param([String] [parameter(ValueFromPipeline=$true)] $tag_name = '*')
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
@@ -910,10 +910,13 @@ Function Get-TagDetails{
         ID# of the tag.
     
     .EXAMPLE
-      Get-TagDetails -tagID 'tagname*'
+      Get-TagDetails -tag_ID '123'
 
 #>
-Param([String] [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)] $tag_id)
+Param([String]
+[Parameter(Mandatory=$true, ValueFromPipeline=$true)]
+
+$tag_id)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
@@ -984,7 +987,7 @@ Function Delete-NexposeTag{
       Delete-NexposeTag -tagID '123'
 
 #>
-Param([Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)] [String] $tagID)
+Param([Parameter(Mandatory=$true, ValueFromPipeline=$true)] [String] $tagID)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"

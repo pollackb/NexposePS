@@ -83,6 +83,92 @@ if ($SCRIPT:session_id -eq $null){
 
 }
 
+
+#############################
+#
+# Asset Functions
+#
+##############################
+
+Function Get-AssetDetails{
+<#
+    .SYNOPSIS
+        Returns detailed asset info
+    .DESCRIPTION
+        Returns detailed asset info
+            
+    .PARAMETER AssetID
+        Asset ID number
+    
+    .EXAMPLE
+      Get-AssetDetails -AssetID '123'
+
+#>
+Param(
+[String]
+[Parameter(Mandatory=$True)]
+$AssetID,
+
+[String]
+[ValidateSet("", "tags", "scans", "vulnerabilities", "software", "files", "services", "unique_identifiers", "vulnerability_instances", "users", "user_groups")]
+$InfoType = ""
+)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+
+switch($InfoType){
+    tags {$directory = "/api/2.1/assets/$AssetID/tags"}
+    scans {$directory = "/api/2.1/assets/$AssetID/scans"}
+    vulnerabilities {$directory = "/api/2.1/assets/$AssetID/vulnerabilities"}
+    services {$directory = "/api/2.1/assets/$AssetID/services"}
+    unique_identifiers {$directory = "/api/2.1/assets/$AssetID/unique_identifiers"}
+    vulnerability_instances {$directory = "/api/2.1/assets/$AssetID/vulnerability_instances"}
+    users {$directory = "/api/2.1/assets/$AssetID/users"}
+    user_groups {$directory = "/api/2.1/assets/$AssetID/user_groups"}
+    default {$directory = "/api/2.1/assets/$AssetID"}
+
+}
+
+$resp = Invoke-WebRequest https://$SCRIPT:server$directory -WebSession $session | ConvertFrom-Json
+$resp
+
+}
+
+Function Remove-NexposeAsset{
+<#
+    .SYNOPSIS
+        Deletes an asset by asset ID.
+    .DESCRIPTION
+        Deletes an asset by asset ID.
+            
+    .PARAMETER AssetID
+        Asset ID number
+    
+    .EXAMPLE
+      Delete-NexposeAsset 132
+
+#>
+Param([String] $AssetID)
+Confirm-Session
+$sites_request = "<DeviceDeleteRequest session-id='$SCRIPT:session_id' device-id= '$AssetID'/>"
+
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post -DisableKeepAlive
+[xml]$xmldata = $resp.content
+if($xmldata.DeviceDeleteResponse.success -eq '0'){
+    Write-Host 'ERROR: '$xmldata.DeviceDeleteResponse -ForegroundColor Red
+    }
+    Else{
+    $xmldata.DeviceDeleteResponse
+    }
+
+}
+
+
 ##############################
 #
 # Asset Group Functions
@@ -111,7 +197,7 @@ param([String]$assetgroupid)
 Confirm-Session
 $sites_request = "<AssetGroupConfigRequest session-id='$SCRIPT:session_id' group-id= '$assetgroupid'/>"
 
-$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post -DisableKeepAlive
 [xml]$xmldata = $resp.content
 if($xmldata.AssetGroupConfigResponse.success -eq '0'){
     Write-Host 'ERROR: '$xmldata.AssetGroupConfigResponse.Failure.message -ForegroundColor Red
@@ -122,16 +208,6 @@ if($xmldata.AssetGroupConfigResponse.success -eq '0'){
 }
 
 Function Get-AssetGroupListing{
-<#
-    .SYNOPSIS
-        Retrieves a list of all asset groups.
-    .DESCRIPTION
-        Retrieves a list of all asset groups.
-    
-    .EXAMPLE
-        
-        Get-AssetGroupListing
-#>
 Confirm-Session
 # Get list of asset groups
 $sites_request = "<AssetGroupListingRequest session-id='$SCRIPT:session_id'/>"
@@ -148,15 +224,15 @@ if($xmldata.AssetGroupListingResponse.success -eq '0'){
 Function Get-AssetGroupByName{
 <#
     .SYNOPSIS
-        Find asset groups by name. Accepts wildcards.
+        Find asset groups by name.
     .DESCRIPTION
-        Finds name of an asset group and returns the config of all that match. Accepts wildcard.
+        Finds name of an asset group and returns the config of all that match.
     .PARAMETER $Assetgroupname
-        String to be used to search for.Wildcards accepted.
+        String to be used to search for. Should be in this format inclduing single quotes 'Assetgroupname', 'Assetgroup*' or '*group*'.
     
     .EXAMPLE
         
-        Get-AssetGroupByName assetgroupname
+        Get-AssetGroupByName 'CMDB-ApplicationTeam-*'
 
 #>
 Param([string]$Assetgroupname)
@@ -178,7 +254,7 @@ Foreach($ID in $AssetGroupID){
 Function Get-SiteListing{
 <#
     .SYNOPSIS
-        retrieves a list of sites.
+        Gets a list of sites.
     .DESCRIPTION
         Gets a list of sites including id, name, description, riskfactor and riskscore.
     
@@ -388,7 +464,7 @@ Function Get-VulnerabilityListing{
         Returns list of all vulnerabilities nexpose has checks for. Added VulnTitle parameter to search for a specific vulnerability.
 
     .PARAMETER VulnTitle
-        Can be used to search for specific vulnerability by title.
+        Can be used to search for specific vulnerability by title. used like this '*aix*'
     
     
     .EXAMPLE
@@ -396,7 +472,7 @@ Function Get-VulnerabilityListing{
         Get-VulnerabilityListing
 
         Returns only vulnerabilities matching string:
-        Get-VulnerabilityListing *aix*
+        Get-VulnerabilityListing '*aix*'
 
 #>
 Param([String]$VulnTitle = '*')
@@ -409,7 +485,7 @@ if($xmldata.VulnerabilityListingResponse.success -like '0'){
     Write-host 'ERROR: '$xmldata.VulnerabilityListingResponse.Failure.message -ForegroundColor Red
     }
     Else{
-    $xmldata.VulnerabilityListingResponse.VulnerabilitySummary | where { $_.title -like "$VulnTitle" }
+    $xmldata.VulnerabilityListingResponse.VulnerabilitySummary | where { $_.title -like $VulnTitle }
     }
 } 
 
@@ -431,6 +507,7 @@ Function Get-VulnerabilityDetails{
 #>
 Param([String]$VulnID)
 Confirm-Session
+# Gets vulnerability listing
 $sites_request = "<VulnerabilityDetailsRequest session-id='$SCRIPT:session_id' vuln-id='$VulnID'/>"
 $resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
 [xml]$xmldata = $resp.content
@@ -461,6 +538,31 @@ if($xmldata.VulnerabilityDetailsResponse.success -like '0'){
 #
 ##############################
 
+Function Invoke-NexposeGenerateReport{
+<#
+    .SYNOPSIS
+        Generates a report by ID 
+    .DESCRIPTION
+        Generates a report by ID  
+   
+    .EXAMPLE
+        Invoke-NexposeGenerateReport -reportID 123
+
+#>
+Param([Parameter(Mandatory=$True)][String] $reportID)
+Confirm-Session
+# Gets vulnerability listing
+$sites_request = "<ReportGenerateRequest session-id='$SCRIPT:session_id' report-id='$reportID'/>"
+$resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
+[xml]$xmldata = $resp.content
+if($xmldata.ReportGenerateRequest.success -like '0'){
+    Write-host 'ERROR: '$xmldata.ReportGenerateRequest.Failure.message -ForegroundColor Red
+    }
+    Else{
+    $xmldata.ReportGenerateRequest.ReportSummary
+    }
+}
+
 Function Get-NexposeReportTemplateListing{
 <#
     .SYNOPSIS
@@ -469,7 +571,7 @@ Function Get-NexposeReportTemplateListing{
         Returns list of all Report Templates. 
    
     .EXAMPLE
-        Get-ReportTemplateListing
+        Get-NexposeReportTemplateListing
 
 #>
 Confirm-Session
@@ -576,7 +678,7 @@ if($xmldata.ReportConfigResponse.success -like '0'){
     }
 }
 
-Function Get-NexposeReportHistory{
+Function Get-ReportHistory{
 <#
     .SYNOPSIS
         Returns the run history of a report. 
@@ -584,11 +686,11 @@ Function Get-NexposeReportHistory{
         Returns the run history of a report.  
 
     .PARAMETER ReportID
-        This should be any cfg-id. the cfg-id can be gotten while runing the Get-NexposeReportListing function.
+        This should be any cfg-id. the cfg-id can be gotten while runing the Get-ReportListing function.
     
     
     .EXAMPLE
-        Get-NexposeReportHistory 3916
+        Get-ReportHistory 3916
 
 #>
 Param([Parameter(Mandatory=$True)][String]$ReportID)
@@ -612,27 +714,21 @@ Function Get-NexposeReportSave{
         Save the configuration for a report definition.
 
     .PARAMETER ConfigID
-		Which report do you want to modify by ID. default is -1 which creates a new report.
 
     .PARAMETER Name
-		Name for the report. This will rename reports that already have a name. 
         
     .PARAMETER TemplateID
-		What Report template do you want to use. Use Get-NexposeReportTemplateListingto find template IDs
 
     .PARAMETER FileFormat
-		What format should the report be. Options: "pdf", "html", "rtf", "xml", "text", "csv", "db", "raw-xml", "raw-xml-v2", "ns-xml", "qualys-xml"
 
     .PARAMETER Filters
-		List filters in a Type1:ID1,Type2:ID2 format. ID will be the ID of whateever type you want to filter by. 
-		Type Options:
-		site, group, device, scan, vuln-categories, vuln-severity, vuln-status, cyberscope-component, cyberscopebureau, cyberscope-enclave, tag
 
     .PARAMETER GenerateNow
-		Generates the report after saving the report.
+
+    .PARAMETER DataModelVersion
     
     .EXAMPLE
-      Get-NexposeReportSave -Name 'Test' -TemplateID 'audit-report' -FileFormat 'pdf' -Filters "site:268,site:255" -GenerateNow
+      
 
 #>
 Param(
@@ -643,14 +739,16 @@ Param(
     [String]
     $Name,
 
-    [Parameter(Mandatory=$True)]
     [String]
     $TemplateID,
 
     [Parameter(Mandatory=$True)]
-    [ValidateSet("pdf", "html", "rtf", "xml", "text", "csv", "db", "raw-xml", "raw-xml-v2", "ns-xml", "qualys-xml")]
+    [ValidateSet("pdf", "html", "rtf", "xml", "text", "csv", "db", "raw-xml", "raw-xml-v2", "ns-xml", "qualys-xml", "sql")]
     [String]
     $FileFormat,
+
+    [String]
+    $DataModelVersion = '1.1.0',
 
     [Parameter(Mandatory=$True)]
     [String]
@@ -668,13 +766,13 @@ If($GenerateNow){
 $ArrayFilters = $Filters.Split(',')
 
 Foreach($Filter in $ArrayFilters){
-$SeparatedFilters = $ArrayFilters.split(':')
+$SeparatedFilters = $Filter.split(':')
 $type = $SeparatedFilters[0]
 $id = $SeparatedFilters[1]
 $FilterElements += "<filter type='$type' id='$id' />"
 }
 
-$sites_request = "<ReportSaveRequest session-id='$SCRIPT:session_id'  generate-now='$Generate'><ReportConfig id='$ConfigID' name='$Name' template-id='$TemplateID' format='$FileFormat'><Filters>$FilterElements</Filters><Users /><Generate /><Delivery><Storage storeOnServer='1' /></Delivery></ReportConfig></ReportSaveRequest> "
+$sites_request = "<ReportSaveRequest session-id='$SCRIPT:session_id'  generate-now='$Generate'><ReportConfig id='$ConfigID' name='$Name' template-id='$TemplateID' format='$FileFormat'><Filters>$FilterElements<filter type='version' id='$DataModelVersion' /></Filters><Users /><Generate /><Delivery><Storage storeOnServer='1' /></Delivery></ReportConfig></ReportSaveRequest> "
 Write-Host $sites_request
 
 $resp = Invoke-WebRequest -URI $uri -Body $sites_request -ContentType 'text/xml' -Method post
@@ -690,29 +788,31 @@ if($xmldata.ReportSaveResponse.success -like '0'){
 Function Get-NexposeReport{
 <#
     .SYNOPSIS
-        Pulls generated report from Nexpose by name.
+        Downloads report once completed.
     .DESCRIPTION
-        Pulls generated report from Nexpose by name.  
+        Downloads report once completed.
 
+    
     .PARAMETER Name
-        Name of report.
-		
+        Name of report you want to download.
+    
     .PARAMETER outfile
-		the name of the file and output location. Defaults to cuurent directory with the name "report".
-		
+        file name and directory.
+    
     .EXAMPLE
-        Get-NexposeReport -Name 'test' -outfile './testreport.pdf'
+      Get-NexposeReport -Name reportname -$outfile .\directory\report.csv
 
 #>
-Param([String]$Name, [string] $outfile = './report')
-Confirm-Session
+Param([String]$Name, [string] $outfile)
 $report = Get-NexposeReportListing -Name $Name
+# Check that the report is generated and loop until it is or stop if it errored out.
 While($report.status -ne 'Generated'){
     if ($report.status -eq 'Failed' -or $report.status -eq 'Aborted' -or $report.status -eq 'Unknown'){
     Write-Host "Report Failed: $report.status" -ForegroundColor Red
     break
     
     }
+    sleep 10
     $report = Get-NexposeReportListing -Name $Name
 }
 
@@ -724,7 +824,8 @@ $cookie.Domain = "$server"
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
 $directory = $report.'report-URI'
-Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session -OutFile $outfile
+Invoke-WebRequest https://$SCRIPT:server$directory -WebSession $session -OutFile $outfile
+Write-Host "Report saved successfully" -ForegroundColor Green
 
 }
 
@@ -735,6 +836,35 @@ Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session -OutFi
 # Tag functions use API version 2.0
 #
 ####################################
+Function Get-AssetTags{
+<#
+    .SYNOPSIS
+        Pull a list of all tags or specify a name.
+    .DESCRIPTION
+        Pull a list of all tags or specify a name.
+            
+    .PARAMETER Name
+        Name of the tag.
+    
+    .EXAMPLE
+      Get-TagListing -TagName 'tagname*'
+
+#>
+Param([String] [parameter(ValueFromPipelineByPropertyName)] $AssetID)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$directory = "https://$SCRIPT:server/api/2.0/tags?per_page=$tagNumber"
+$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
+$taglist += $resp.resources
+
+$taglist | where { $_.tag_name -like "$tag_name" }
+
+}
 Function Get-TagListing{
 <#
     .SYNOPSIS
@@ -749,8 +879,7 @@ Function Get-TagListing{
       Get-TagListing -TagName 'tagname*'
 
 #>
-Param([String] $TagName = '*')
-Confirm-Session
+Param([String] [parameter(ValueFromPipelineByPropertyName)] $tag_name = '*')
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
@@ -759,14 +888,14 @@ $cookie.Domain = "$server"
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
 $directory = '/api/2.0/tags'
-$resp = Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session | ConvertFrom-Json
+$resp = Invoke-WebRequest https://$SCRIPT:server$directory -WebSession $session | ConvertFrom-Json
 # first request only pulls one page of tags. this code will make all tags fit on one page.
 $tagNumber = $resp.total_available
-$directory = "https://nexpose.upmc.com/api/2.0/tags?per_page=$tagNumber"
+$directory = "https://$SCRIPT:server/api/2.0/tags?per_page=$tagNumber"
 $resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
 $taglist += $resp.resources
 
-$taglist | where { $_.tag_name -like "$TagName" }
+$taglist | where { $_.tag_name -like "$tag_name" }
 
 }
 
@@ -777,15 +906,14 @@ Function Get-TagDetails{
     .DESCRIPTION
         Returns detailed info on tags
             
-    .PARAMETER Name
-        Name of the tag.
+    .PARAMETER tagID
+        ID# of the tag.
     
     .EXAMPLE
-      Get-TagDetails -TagName 'tagname*'
+      Get-TagDetails -tagID 'tagname*'
 
 #>
-Param([String] $TagName = '*')
-Confirm-Session
+Param([String] [Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)] $tag_id)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
@@ -793,21 +921,188 @@ $cookie.Domain = "$server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
-$directory = '/api/2.0/tags'
-$resp = Invoke-WebRequest https://nexpose.upmc.com$directory -WebSession $session | ConvertFrom-Json
+#$directory = '/api/2.0/tags'
+#$resp = Invoke-WebRequest https://$SCRIPT:server$directory -WebSession $session | ConvertFrom-Json
 # first request only pulls one page of tags. this code will make all tags fit on one page.
-$tagNumber = $resp.total_available
-$directory = "https://nexpose.upmc.com/api/2.0/tags?per_page=$tagNumber"
-$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
-$taglist += $resp.resources
+#$tagNumber = $resp.total_available
+#$directory = "https://$SCRIPT:server/api/2.0/tags?per_page=$tagNumber"
+#$resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
+#$taglist += $resp.resources
 
-$TagID = ($taglist | where { $_.tag_name -like "$TagName" }).tag_id
-$directory = "https://nexpose.upmc.com/api/2.0/tags/$TagID"
+#$TagID = ($taglist | where { $_.tag_name -like "$TagName" }).tag_id
+$directory = "https://$SCRIPT:server/api/2.0/tags/$tag_id"
 $resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
 $resp
 
 }
 
+Function Create-NexposeTag{
+<#
+    .SYNOPSIS
+        Creates a Nexpose tag.
+    .DESCRIPTION
+        Creates a Nexpose tag.
+            
+    .PARAMETER Name
+        Name of the tag.
+    
+    .EXAMPLE
+      Create-NexposeTag -Name 'test'
+
+#>
+Param([String] $Type = 'CUSTOM', [Parameter(Mandatory=$true)] [String] $Name, [String] $Color = '#f6f6f6')
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$headers = @{}
+$headers.Add("Accept","application/json, text/javascript, */*; q=0.01")
+$headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
+$headers.Add("X-Requested-With","XMLHttpRequest")
+$headers.Add("Content-Type","application/json; charset=utf-8")
+$postParams = "[{`"type`":`"$Type`",`"name`":`"$Name`",`"color`":`"$Color`",`"tagAttributes`":[{`"name`":`"COLOR`",`"value`":`"$Color`"}]}]"
+
+$directory = "https://$SCRIPT:server/data/tag"
+$resp = Invoke-WebRequest $directory -Headers $headers -Method Put -Body $postParams -WebSession $session
+$resp
+}
+
+Function Delete-NexposeTag{
+<#
+    .SYNOPSIS
+        Deletes a Nexpose tag.
+    .DESCRIPTION
+        Deletes a Nexpose tag.
+            
+    .PARAMETER tagID
+        ID of the tag.
+    
+    .EXAMPLE
+      Delete-NexposeTag -tagID '123'
+
+#>
+Param([Parameter(Mandatory=$true, ValueFromPipelineByPropertyName)] [String] $tagID)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+
+$headers = @{}
+$headers.Add("Accept","*/*")
+$headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
+$headers.Add("X-Requested-With","XMLHttpRequest")
+$headers.Add("Content-Type","application/json; charset=utf-8")
+
+$directory = "https://$SCRIPT:server/data/tag?tagIDs=$tagID"
+$resp = Invoke-WebRequest $directory -Headers $headers -Method Delete -WebSession $session
+$resp
+}
+
+Function Remove-NexposeTag{
+<#
+    .SYNOPSIS
+        Returns detailed asset info
+    .DESCRIPTION
+        Returns detailed asset info
+            
+    .PARAMETER AssetID
+        Asset ID number
+    
+    .EXAMPLE
+      Get-AssetDetails -AssetID '123'
+
+#>
+Param(
+[String]
+[Parameter(Mandatory=$True)]
+$TagID,
+
+[String]
+[Parameter(Mandatory=$True)]
+[ValidateSet("asset", "site", "asset_group")]
+$RemoveFrom,
+
+[String]
+[Parameter(Mandatory=$True)]
+$ID
+)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+
+switch($RemoveFrom){
+    asset {$directory = "/api/2.1/assets/$ID/tags/$TagID"}
+    site {$directory = "/api/2.0/sites/$ID/tags/$TagID"}
+    asset_groups {$directory = "/api/2.0/asset_groups/$ID/tags/$TagID"}
+    
+}
+
+$resp = Invoke-WebRequest https://$SCRIPT:server$directory -Method Delete -WebSession $session | ConvertFrom-Json
+$resp
+
+}
+
+
+#######################
+#
+# Filter Functions
+#
+########################
+
+Function Get-FilterAsset{
+<#
+    .SYNOPSIS
+        Interact with the filtering capabilities in Nexpose.
+    .DESCRIPTION
+        Interact with the filtering capabilities in Nexpose. Please read up on what operators work with which fieldnames.
+            
+    .PARAMETER operator
+        AND/OR this will dictate whether the filter matches on all or any filter.
+
+    .PARAMETER fieldname
+        What are we filtering on: ASSET, CVE_ID, CVSS_ACCESS_COMPLEXITY, CVSS_ACCESS_VECTOR, CVSS_AUTHENTICATION_REQUIRED, CVSS_AVAILABILITY_IMPACT, CVSS_CONFIDENTIALITY_IMPACT, CVSS_INTEGRITY_IMPACT, CVSS_SCORE, 
+        HOST_TYPE, IP_ADDRESS_TYPE, IP_ALT_ADDRESS_TYPE, IP_RANGE, OS, PCI_COMPLIANCE_STATUS, RISK_SCORE, SCAN_DATE, SERVICE, SITE_ID, SOFTWARE, USER_ADDED_CRITICALITY_LEVEL, USER_ADDED_CUSTOM_TAG, USER_ADDED_TAG_LOCATION
+        USER_ADDED_TAG_OWNER, VALIDATED_VULNERABILITIES, VULNERABILITY, VULNERABILITY_EXPOSURES, VULN_CATEGORY
+    
+    .EXAMPLE
+      Get-FilterAsset -fieldname 'IP_RANGE' -operator 'IS' -value '10.10.20.20'
+
+#>
+Param([String] $operator = 'AND', [String] [Parameter(Mandatory=$true)] $fieldname, [String] [Parameter(Mandatory=$true)] $FieldnameOperator, [String] [Parameter(Mandatory=$true)] $value)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$headers = @{}
+$headers.Add("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+$headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
+$headers.Add("X-Requested-With","XMLHttpRequest")
+$headers.Add("Content-Type","application/x-www-form-urlencoded; charset=UTF-8")
+$Criteria = "{`"operator`":`"$operator`", `"criteria`":[{`"metadata`":{`"fieldName`":`"$fieldname`"},`"operator`":`"$FieldnameOperator`",`"values`":[`"$value`"]}]}"
+
+
+$postParams = @{sort=-1;dir=-1;startIndex=-1;results=-1;'table-id'='assetfilter';searchCriteria=$Criteria }
+$directory = "https://$SCRIPT:server/data/asset/filterAssets"
+$resp = Invoke-WebRequest $directory -WebSession $session -Headers $headers -Method POST -Body $postParams | ConvertFrom-Json
+#$totalnum = ($resp).totalRecords
+#$postParams = @{sort='assetOSName';dir='DESC';startIndex=1;results=$totalnum;'table-id'='assetfilter';searchCriteria=$Criteria }
+#$resp = Invoke-WebRequest $directory -WebSession $session -Headers $headers -Method POST -Body $postParams | ConvertFrom-Json
+$resp
+
+}
 
 ###########################
 #
@@ -817,17 +1112,6 @@ $resp
 
 # Pull generic OS Numbers
 Function Get-NexposeOSInfo{
-<#
-    .SYNOPSIS
-        Returns a list of operating systems and the number of instances
-    .DESCRIPTION
-        Returns a list of operating systems and the number of instances
-    
-    .EXAMPLE
-      Get-NexposeOSInfo
-
-#>
-Confirm-Session
 
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
@@ -841,7 +1125,7 @@ $headers.Add("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*
 $headers.Add("X-Requested-With","XMLHttpRequest")
 $headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
 $headers.Add("Content-Type","application/x-www-form-urlencoded; charset=UTF-8")
-[xml]$resp = (Invoke-WebRequest https://nexpose.upmc.com/data/asset/os/dyntable?printDocType=0%26tableID=OSSynopsisTable -WebSession $session).content
+[xml]$resp = (Invoke-WebRequest https://$SCRIPT:server/data/asset/os/dyntable?printDocType=0%26tableID=OSSynopsisTable -WebSession $session).content
 $OS = @();
 foreach($line in $resp.DynTable.Data.tr){$val = New-Object psobject;
     $val | Add-Member -MemberType NoteProperty -Name OSID -Value $line.td[0]
@@ -856,3 +1140,30 @@ foreach($line in $resp.DynTable.Data.tr){$val = New-Object psobject;
     }
 $OS
 }
+
+
+
+
+####################
+#
+# Testing scripts
+#
+####################
+Function Get-NexposePage{
+Param([string] $URI)
+$cookie = New-Object System.Net.Cookie
+$cookie.Name = 'nexposeCCSessionID'
+$cookie.Value = "$SCRIPT:session_id"
+$cookie.Domain = "$server"
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add($cookie)
+$headers = @{}
+$headers.Add("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+$headers.Add("X-Requested-With","XMLHttpRequest")
+$headers.Add("nexposeCCSessionID","$SCRIPT:session_id")
+$headers.Add("Content-Type","application/x-www-form-urlencoded; charset=UTF-8")
+    Invoke-WebRequest $URI -WebSession $session
+
+}
+

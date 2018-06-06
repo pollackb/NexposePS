@@ -1,4 +1,4 @@
-﻿########################################################
+﻿#######################################################
 #
 # Script to interact with NExpose API.
 # Author: Ben Pollack 
@@ -29,7 +29,7 @@ function Invoke-NexposeLogin{
 Param (
     [String] 
     [Parameter(Mandatory=$true)]
-    $server,
+    $SCRIPT:server,
     [String]
     $api_version = '1.1'
 )
@@ -116,7 +116,7 @@ $InfoType = ""
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -819,7 +819,7 @@ While($report.status -ne 'Generated'){
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -854,11 +854,11 @@ Param([String] [parameter(ValueFromPipeline=$true)] $AssetID)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
-$directory = "https://$SCRIPT:server/api/2.0/tags?per_page=$tagNumber"
+$directory = "https://$uri/api/2.0/tags?per_page=$tagNumber"
 $resp = Invoke-WebRequest $directory -WebSession $session | ConvertFrom-Json
 $taglist += $resp.resources
 
@@ -883,7 +883,7 @@ Param([String] [parameter(ValueFromPipeline=$true)] $tag_name = '*')
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -920,7 +920,7 @@ $tag_id)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -957,7 +957,7 @@ Param([String] $Type = 'CUSTOM', [Parameter(Mandatory=$true)] [String] $Name, [S
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -991,7 +991,7 @@ Param([Parameter(Mandatory=$true, ValueFromPipeline=$true)] [String] $tagID)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -1038,7 +1038,7 @@ $ID
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -1085,7 +1085,7 @@ Param([String] $operator = 'AND', [String] [Parameter(Mandatory=$true)] $fieldna
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -1119,7 +1119,7 @@ Function Get-NexposeOSInfo{
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
@@ -1157,7 +1157,7 @@ Param([string] $URI)
 $cookie = New-Object System.Net.Cookie
 $cookie.Name = 'nexposeCCSessionID'
 $cookie.Value = "$SCRIPT:session_id"
-$cookie.Domain = "$server"
+$cookie.Domain = "$SCRIPT:server"
 
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $session.Cookies.Add($cookie)
